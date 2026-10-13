@@ -30,6 +30,7 @@ class EventType(Enum):
     GRADE_RELEASED = "GRADE_RELEASED"
     SCHEDULE_CHANGE = "SCHEDULE_CHANGE"
     ENROLLMENT_UPDATE = "ENROLLMENT_UPDATE"
+    STATE_CHANGED = "STATE_CHANGED"
 
 
 # Type alias for a generic listener callback

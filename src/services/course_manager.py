@@ -1,8 +1,14 @@
 """
 Course Manager Service — Orchestration Layer.
 
-Brings together all four design patterns into a cohesive service
-that client code (e.g. the CLI in `main.py`) interacts with.
+Brings together all six design patterns into a cohesive service
+that client code (e.g. the CLI in `main.py`) interacts with:
+    1. Factory Method — create courses by type
+    2. Observer       — broadcast notifications on course events
+    3. Strategy       — swap grading algorithms at runtime
+    4. Decorator      — wrap courses with add-on features and fees
+    5. Command        — execute reversible operations with undo/redo & audit log
+    6. State          — track and enforce course lifecycle phases
 """
 
 from __future__ import annotations
@@ -11,8 +17,10 @@ from dataclasses import dataclass, field
 
 from src.domain.course import Course, CourseType
 from src.domain.student import Student
+from src.patterns.command import Command, CommandInvoker
 from src.patterns.factory import CourseFactory
 from src.patterns.observer import CourseNotificationManager, EventType
+from src.patterns.state import CourseState
 from src.patterns.strategy import GradingStrategy
 
 
@@ -20,21 +28,25 @@ from src.patterns.strategy import GradingStrategy
 class CourseManager:
     """High-level service for managing courses and students.
 
-    Internally uses:
+    Internally orchestrates:
         - **Factory Method** to create courses.
         - **Observer** to broadcast notifications.
         - **Strategy** to compute grades.
-        - **Decorator** is applied externally by wrapping courses.
+        - **Decorator** applied by wrapping courses.
+        - **Command** to execute reversible actions with audit history.
+        - **State** to govern course lifecycle transitions and permissions.
 
     Attributes:
         courses: Registry of course_id → Course.
         students: Registry of student_id → Student.
         notifiers: Registry of course_id → CourseNotificationManager.
+        invoker: Invoker managing command execution, undo, redo, and audit trail.
     """
 
     courses: dict[str, Course] = field(default_factory=dict)
     students: dict[str, Student] = field(default_factory=dict)
     notifiers: dict[str, CourseNotificationManager] = field(default_factory=dict)
+    invoker: CommandInvoker = field(default_factory=CommandInvoker)
 
     # ------------------------------------------------------------------
     # Course management  (Factory Pattern)
@@ -196,6 +208,58 @@ class CourseManager:
             return False
         course.set_grading_strategy(strategy)
         return True
+
+    # ------------------------------------------------------------------
+    # Command Pattern (Transactions & Undo/Redo)
+    # ------------------------------------------------------------------
+    def execute_command(self, command: Command) -> bool:
+        """Execute a reversible command via the internal invoker."""
+        return self.invoker.execute_command(command)
+
+    def undo(self) -> bool:
+        """Undo the last executed transaction."""
+        return self.invoker.undo()
+
+    def redo(self) -> bool:
+        """Redo the last undone transaction."""
+        return self.invoker.redo()
+
+    def get_audit_log(self) -> list[str]:
+        """Retrieve chronological history of executed/undone transactions."""
+        return self.invoker.get_audit_log()
+
+    # ------------------------------------------------------------------
+    # State Pattern (Course Lifecycle Management)
+    # ------------------------------------------------------------------
+    def set_course_state(self, course_id: str, state: CourseState) -> bool:
+        """Set the lifecycle state of a registered course and notify observers."""
+        course = self.courses.get(course_id)
+        if course is None:
+            return False
+
+        course.set_state(state)
+        notifier = self.notifiers.get(course_id)
+        if notifier:
+            notifier.notify(
+                EventType.STATE_CHANGED,
+                f"Course {course.title} transitioned to state: {state.name}",
+            )
+        return True
+
+    def advance_course_state(self, course_id: str) -> CourseState | None:
+        """Advance the course to its next lifecycle state and notify observers."""
+        course = self.courses.get(course_id)
+        if course is None:
+            return None
+
+        new_state = course.advance_state()
+        notifier = self.notifiers.get(course_id)
+        if notifier:
+            notifier.notify(
+                EventType.STATE_CHANGED,
+                f"Course {course.title} advanced to state: {new_state.name}",
+            )
+        return new_state
 
     # ------------------------------------------------------------------
     # Reporting

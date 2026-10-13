@@ -28,6 +28,7 @@ from src.domain.course import Course
 if TYPE_CHECKING:
     from src.domain.student import Student
     from src.patterns.strategy import GradingStrategy
+    from src.patterns.state import CourseState
 
 
 class CourseDecorator(Course):
@@ -104,6 +105,44 @@ class CourseDecorator(Course):
     @grading_strategy.setter
     def grading_strategy(self, value: "GradingStrategy | None") -> None:
         self._wrapped.grading_strategy = value
+
+    @property
+    def state(self) -> "CourseState | None":  # type: ignore[override]
+        return self._wrapped.state
+
+    @state.setter
+    def state(self, value: "CourseState | None") -> None:
+        self._wrapped.state = value
+
+    # ------------------------------------------------------------------
+    # Forwarded methods to the wrapped course
+    # ------------------------------------------------------------------
+    def set_state(self, state: "CourseState") -> None:
+        self._wrapped.set_state(state)
+
+    def advance_state(self) -> "CourseState":
+        return self._wrapped.advance_state()
+
+    def enroll_student(self, student: "Student") -> bool:
+        return self._wrapped.enroll_student(student)
+
+    def _do_enroll(self, student: "Student") -> bool:
+        return self._wrapped._do_enroll(student)
+
+    def remove_student(self, student: "Student") -> bool:
+        return self._wrapped.remove_student(student)
+
+    def _do_remove(self, student: "Student") -> bool:
+        return self._wrapped._do_remove(student)
+
+    def set_grading_strategy(self, strategy: "GradingStrategy") -> None:
+        self._wrapped.set_grading_strategy(strategy)
+
+    def calculate_grade(self, score: float) -> str:
+        return self._wrapped.calculate_grade(score)
+
+    def _do_calculate_grade(self, score: float) -> str:
+        return self._wrapped._do_calculate_grade(score)
 
     # ------------------------------------------------------------------
     # Forwarded abstract methods (default: delegate to wrapped)

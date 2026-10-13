@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.domain.student import Student
     from src.patterns.strategy import GradingStrategy
+    from src.patterns.state import CourseState
 
 
 class CourseType(Enum):
@@ -43,6 +44,7 @@ class Course(ABC):
         base_fee: Tuition fee in USD before add-ons.
         enrolled_students: Students currently enrolled.
         grading_strategy: The pluggable grading algorithm (Strategy pattern).
+        state: The course lifecycle state (State pattern).
     """
 
     course_id: str
@@ -52,6 +54,7 @@ class Course(ABC):
     base_fee: float = 500.0
     enrolled_students: list["Student"] = field(default_factory=list, repr=False)
     grading_strategy: "GradingStrategy | None" = field(default=None, repr=False)
+    state: "CourseState | None" = field(default=None, repr=False)
 
     # ------------------------------------------------------------------
     # Abstract interface
@@ -65,14 +68,35 @@ class Course(ABC):
         """Return a list of requirements/resources for this course type."""
 
     # ------------------------------------------------------------------
+    # Lifecycle State (State pattern hooks)
+    # ------------------------------------------------------------------
+    def set_state(self, state: "CourseState") -> None:
+        """Assign a lifecycle state to this course."""
+        self.state = state
+
+    def advance_state(self) -> "CourseState":
+        """Advance the course to its next lifecycle state."""
+        if self.state is None:
+            raise ValueError(
+                f"Course '{self.course_id}' has no lifecycle state assigned."
+            )
+        return self.state.advance(self)
+
+    # ------------------------------------------------------------------
     # Enrollment
     # ------------------------------------------------------------------
     def enroll_student(self, student: "Student") -> bool:
-        """Enroll a student if the course is not full.
+        """Enroll a student if permitted by state and capacity.
 
         Returns:
-            True if enrolled successfully, False if the course is full.
+            True if enrolled successfully, False if full.
         """
+        if self.state is not None:
+            return self.state.enroll_student(self, student)
+        return self._do_enroll(student)
+
+    def _do_enroll(self, student: "Student") -> bool:
+        """Internal enrollment logic without state interception."""
         if len(self.enrolled_students) >= self.max_students:
             return False
         if student not in self.enrolled_students:
@@ -86,6 +110,12 @@ class Course(ABC):
         Returns:
             True if the student was removed, False if not found.
         """
+        if self.state is not None:
+            return self.state.remove_student(self, student)
+        return self._do_remove(student)
+
+    def _do_remove(self, student: "Student") -> bool:
+        """Internal removal logic without state interception."""
         if student in self.enrolled_students:
             self.enrolled_students.remove(student)
             student.drop(self.course_id)
@@ -100,17 +130,20 @@ class Course(ABC):
         self.grading_strategy = strategy
 
     def calculate_grade(self, score: float) -> str:
-        """Delegate grade calculation to the attached strategy.
+        """Delegate grade calculation to state validation / attached strategy.
 
         Args:
             score: Numeric score (0-100).
 
         Returns:
             Letter grade string produced by the strategy.
-
-        Raises:
-            ValueError: If no grading strategy has been set.
         """
+        if self.state is not None:
+            return self.state.calculate_grade(self, score)
+        return self._do_calculate_grade(score)
+
+    def _do_calculate_grade(self, score: float) -> str:
+        """Internal grade calculation logic."""
         if self.grading_strategy is None:
             raise ValueError(
                 f"No grading strategy set for course '{self.course_id}'. "

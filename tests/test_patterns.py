@@ -41,6 +41,22 @@ from src.patterns.decorator import (
     TutoringSupportDecorator,
     CertificateDecorator,
 )
+from src.patterns.command import (
+    Command,
+    EnrollStudentCommand,
+    DropStudentCommand,
+    RecordGradeCommand,
+    ChangeGradingStrategyCommand,
+    CommandInvoker,
+)
+from src.patterns.state import (
+    CourseState,
+    DraftState,
+    OpenRegistrationState,
+    InProgressState,
+    CompletedState,
+    CourseStateError,
+)
 from src.services.course_manager import CourseManager
 
 
@@ -355,6 +371,241 @@ class TestCourseManagerIntegration(unittest.TestCase):
         self.assertTrue(result)
         course = self.mgr.get_course("CS101")
         self.assertEqual(len(course.enrolled_students), 0)
+
+    def test_manager_command_execution_and_undo(self) -> None:
+        cmd = EnrollStudentCommand(self.mgr, "S001", "CS101")
+        self.assertTrue(self.mgr.execute_command(cmd))
+        course = self.mgr.get_course("CS101")
+        self.assertEqual(len(course.enrolled_students), 1)
+
+        self.assertTrue(self.mgr.undo())
+        self.assertEqual(len(course.enrolled_students), 0)
+
+        self.assertTrue(self.mgr.redo())
+        self.assertEqual(len(course.enrolled_students), 1)
+
+    def test_manager_state_advance_flow(self) -> None:
+        self.mgr.set_course_state("CS101", DraftState())
+        course = self.mgr.get_course("CS101")
+        self.assertEqual(course.state.name, "DRAFT")
+
+        new_state = self.mgr.advance_course_state("CS101")
+        self.assertEqual(new_state.name, "OPEN_REGISTRATION")
+        self.assertEqual(course.state.name, "OPEN_REGISTRATION")
+
+
+# ======================================================================
+# 6. Command Pattern Tests
+# ======================================================================
+
+class TestCommandPattern(unittest.TestCase):
+    """Verify Command execution, undo/redo stacks, and audit logging."""
+
+    def setUp(self) -> None:
+        self.mgr = CourseManager()
+        self.mgr.create_course(CourseType.LECTURE, "CS101", "Intro CS", 3)
+        self.mgr.set_grading_strategy("CS101", StandardGradingStrategy())
+        self.mgr.register_student("S001", "Alice", "alice@uni.edu")
+        self.mgr.register_student("S002", "Bob", "bob@uni.edu")
+        self.invoker = CommandInvoker()
+
+    def test_enroll_command_execute_and_undo(self) -> None:
+        cmd = EnrollStudentCommand(self.mgr, "S001", "CS101")
+        self.assertTrue(self.invoker.execute_command(cmd))
+        course = self.mgr.get_course("CS101")
+        self.assertIn(self.mgr.get_student("S001"), course.enrolled_students)
+
+        # Undo enrollment
+        self.assertTrue(self.invoker.undo())
+        self.assertNotIn(self.mgr.get_student("S001"), course.enrolled_students)
+
+    def test_drop_command_execute_and_undo(self) -> None:
+        self.mgr.enroll_student("S001", "CS101")
+        course = self.mgr.get_course("CS101")
+        self.assertEqual(len(course.enrolled_students), 1)
+
+        cmd = DropStudentCommand(self.mgr, "S001", "CS101")
+        self.assertTrue(self.invoker.execute_command(cmd))
+        self.assertEqual(len(course.enrolled_students), 0)
+
+        # Undo drop
+        self.assertTrue(self.invoker.undo())
+        self.assertEqual(len(course.enrolled_students), 1)
+
+    def test_record_grade_command_undo_restores_previous_score(self) -> None:
+        self.mgr.enroll_student("S001", "CS101")
+        student = self.mgr.get_student("S001")
+        student.record_grade("CS101", 75.0)
+
+        cmd = RecordGradeCommand(self.mgr, "S001", "CS101", 95.0)
+        self.assertTrue(self.invoker.execute_command(cmd))
+        self.assertEqual(student.grades["CS101"], 95.0)
+
+        # Undo should restore 75.0
+        self.assertTrue(self.invoker.undo())
+        self.assertEqual(student.grades["CS101"], 75.0)
+
+    def test_record_grade_command_undo_removes_new_grade(self) -> None:
+        self.mgr.enroll_student("S001", "CS101")
+        student = self.mgr.get_student("S001")
+        self.assertNotIn("CS101", student.grades)
+
+        cmd = RecordGradeCommand(self.mgr, "S001", "CS101", 88.0)
+        self.assertTrue(self.invoker.execute_command(cmd))
+        self.assertEqual(student.grades["CS101"], 88.0)
+
+        # Undo should remove the grade key
+        self.assertTrue(self.invoker.undo())
+        self.assertNotIn("CS101", student.grades)
+
+    def test_redo_command(self) -> None:
+        cmd = EnrollStudentCommand(self.mgr, "S001", "CS101")
+        self.invoker.execute_command(cmd)
+        self.invoker.undo()
+        self.assertTrue(self.invoker.can_redo)
+
+        self.assertTrue(self.invoker.redo())
+        course = self.mgr.get_course("CS101")
+        self.assertIn(self.mgr.get_student("S001"), course.enrolled_students)
+        self.assertFalse(self.invoker.can_redo)
+
+    def test_change_grading_strategy_command(self) -> None:
+        curved = CurvedGradingStrategy(5.0)
+        cmd = ChangeGradingStrategyCommand(self.mgr, "CS101", curved)
+        self.assertTrue(self.invoker.execute_command(cmd))
+        course = self.mgr.get_course("CS101")
+        self.assertEqual(course.grading_strategy.get_strategy_name(), curved.get_strategy_name())
+
+        # Undo restores Standard
+        self.assertTrue(self.invoker.undo())
+        self.assertIsInstance(course.grading_strategy, StandardGradingStrategy)
+
+    def test_command_invoker_audit_log(self) -> None:
+        cmd = EnrollStudentCommand(self.mgr, "S001", "CS101")
+        self.invoker.execute_command(cmd)
+        self.invoker.undo()
+        self.invoker.redo()
+
+        log = self.invoker.get_audit_log()
+        self.assertEqual(len(log), 3)
+        self.assertIn("EXECUTE", log[0])
+        self.assertIn("UNDO", log[1])
+        self.assertIn("REDO", log[2])
+
+    def test_empty_invoker_cannot_undo_or_redo(self) -> None:
+        self.assertFalse(self.invoker.can_undo)
+        self.assertFalse(self.invoker.can_redo)
+        self.assertFalse(self.invoker.undo())
+        self.assertFalse(self.invoker.redo())
+
+    def test_invalid_command_fails_gracefully(self) -> None:
+        cmd = EnrollStudentCommand(self.mgr, "INVALID_ID", "CS101")
+        self.assertFalse(self.invoker.execute_command(cmd))
+        self.assertFalse(self.invoker.can_undo)
+
+
+# ======================================================================
+# 7. State Pattern Tests
+# ======================================================================
+
+class TestStatePattern(unittest.TestCase):
+    """Verify CourseState lifecycle, permissions, and transitions."""
+
+    def setUp(self) -> None:
+        self.course = CourseFactory.create_course(
+            CourseType.LECTURE, "CS201", "Data Structures", 3
+        )
+        self.course.set_grading_strategy(StandardGradingStrategy())
+        self.student = Student("S001", "Alice", "alice@uni.edu")
+
+    def test_draft_state_blocks_enrollment(self) -> None:
+        self.course.set_state(DraftState())
+        with self.assertRaises(CourseStateError):
+            self.course.enroll_student(self.student)
+
+    def test_draft_state_blocks_grading(self) -> None:
+        self.course.set_state(DraftState())
+        with self.assertRaises(CourseStateError):
+            self.course.calculate_grade(85.0)
+
+    def test_open_registration_allows_enrollment(self) -> None:
+        self.course.set_state(OpenRegistrationState())
+        result = self.course.enroll_student(self.student)
+        self.assertTrue(result)
+        self.assertIn(self.student, self.course.enrolled_students)
+
+    def test_open_registration_blocks_grading(self) -> None:
+        self.course.set_state(OpenRegistrationState())
+        with self.assertRaises(CourseStateError):
+            self.course.calculate_grade(85.0)
+
+    def test_in_progress_blocks_enrollment(self) -> None:
+        self.course.set_state(InProgressState())
+        with self.assertRaises(CourseStateError):
+            self.course.enroll_student(self.student)
+
+    def test_in_progress_allows_grading_and_drop(self) -> None:
+        # Pre-enroll in open state
+        self.course.set_state(OpenRegistrationState())
+        self.course.enroll_student(self.student)
+
+        # Advance to InProgress
+        self.course.advance_state()
+        self.assertIsInstance(self.course.state, InProgressState)
+
+        # Grade calculation allowed
+        grade = self.course.calculate_grade(92.0)
+        self.assertEqual(grade, "A")
+
+        # Dropping allowed (withdrawal)
+        dropped = self.course.remove_student(self.student)
+        self.assertTrue(dropped)
+        self.assertEqual(len(self.course.enrolled_students), 0)
+
+    def test_full_lifecycle_advancement(self) -> None:
+        self.course.set_state(DraftState())
+        self.assertEqual(self.course.state.name, "DRAFT")
+
+        s1 = self.course.advance_state()
+        self.assertIsInstance(s1, OpenRegistrationState)
+        self.assertEqual(self.course.state.name, "OPEN_REGISTRATION")
+
+        s2 = self.course.advance_state()
+        self.assertIsInstance(s2, InProgressState)
+        self.assertEqual(self.course.state.name, "IN_PROGRESS")
+
+        s3 = self.course.advance_state()
+        self.assertIsInstance(s3, CompletedState)
+        self.assertEqual(self.course.state.name, "COMPLETED")
+
+        # Cannot advance beyond COMPLETED
+        with self.assertRaises(CourseStateError):
+            self.course.advance_state()
+
+    def test_completed_state_blocks_all_mutations(self) -> None:
+        self.course.set_state(CompletedState())
+
+        with self.assertRaises(CourseStateError):
+            self.course.enroll_student(self.student)
+
+        with self.assertRaises(CourseStateError):
+            self.course.remove_student(self.student)
+
+        with self.assertRaises(CourseStateError):
+            self.course.calculate_grade(90.0)
+
+    def test_state_with_decorator(self) -> None:
+        self.course.set_state(DraftState())
+        decorated = HonorsDistinctionDecorator(self.course)
+
+        # Decorated course forwards state and raises CourseStateError
+        with self.assertRaises(CourseStateError):
+            decorated.enroll_student(self.student)
+
+        # Advancing through decorator
+        new_state = decorated.advance_state()
+        self.assertIsInstance(new_state, OpenRegistrationState)
+        self.assertTrue(decorated.enroll_student(self.student))
 
 
 if __name__ == "__main__":
