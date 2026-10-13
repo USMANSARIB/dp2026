@@ -1,7 +1,7 @@
 # Student Course Management System — Design Patterns
 
 A Python project demonstrating six classic **Gang of Four (GoF)** design patterns
-through a realistic Student Course Management System.
+through a realistic Student Course Management System, featuring a full **interactive terminal navigation menu**.
 
 ---
 
@@ -16,9 +16,9 @@ through a realistic Student Course Management System.
 | 5 | **Command** | Behavioural | [`command.py`](src/patterns/command.py) | Encapsulate operations (`Enroll`, `Drop`, `RecordGrade`, `ChangeStrategy`) with Undo / Redo & Audit Trail |
 | 6 | **State** | Behavioural | [`state.py`](src/patterns/state.py) | Govern course lifecycle phases (`Draft`, `OpenRegistration`, `InProgress`, `Completed`) & enforce transition rules |
 
-### 📖 Pattern Documentation
+### 📖 Documentation & Walkthrough Guides
 
-Each pattern has a dedicated document explaining the theory, architecture, code walkthrough, and trade-offs:
+Each pattern and feature has a dedicated document explaining the theory, architecture, code walkthrough, step-by-step procedure, and trade-offs:
 
 - [01 — Factory Method Pattern](docs/01_factory_method_pattern.md)
 - [02 — Observer Pattern](docs/02_observer_pattern.md)
@@ -26,6 +26,43 @@ Each pattern has a dedicated document explaining the theory, architecture, code 
 - [04 — Decorator Pattern](docs/04_decorator_pattern.md)
 - [05 — Command Pattern](docs/05_command_pattern.md)
 - [06 — State Pattern](docs/06_state_pattern.md)
+- [07 — Terminal Navigation Guide (Step-by-Step Procedure)](docs/07_terminal_navigation_guide.md)
+
+---
+
+## 🖥️ Interactive Terminal Navigation Menu
+
+Launch the terminal application to interactively showcase any feature on demand:
+
+```bash
+python src/main.py
+```
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║   STUDENT COURSE MANAGEMENT SYSTEM — Feature Navigation Menu   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  [1] Factory Method Pattern  — Dynamic Course Creation by Type
+  [2] Observer Pattern        — Event Subscriptions & Broadcasts
+  [3] Strategy Pattern        — Pluggable Runtime Grading Algorithms
+  [4] Decorator Pattern       — Course Add-ons & Surcharge Stacking
+  [5] Command Pattern         — Reversible Actions, Undo/Redo & Audit
+  [6] State Pattern           — Academic Lifecycle & Access Control
+  [7] System Status & Reports — Enrollment Summary & Audit Log
+  [8] Full Guided Tour        — Walkthrough of All Patterns Step-by-Step
+  [9] Run Test Suite          — Execute all 58 Automated Tests
+  [0] Exit Application
+```
+
+### CLI Launch Modes
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **Interactive Menu** | `python src/main.py` | Full interactive menu with on-demand navigation across all 6 patterns |
+| **Guided Tour** | `python src/main.py --all` | Automated step-by-step walkthrough across all patterns with pauses |
+| **In-Terminal Tests** | `python src/main.py --test` | Runs all 58 automated unit & integration tests directly |
+| **Standard Unittest** | `python -m unittest discover -s tests -v` | Standard Python unittest runner |
 
 ---
 
@@ -40,28 +77,29 @@ dp/
 │   ├── 03_strategy_pattern.md
 │   ├── 04_decorator_pattern.md
 │   ├── 05_command_pattern.md
-│   └── 06_state_pattern.md
+│   ├── 06_state_pattern.md
+│   └── 07_terminal_navigation_guide.md   # Step-by-step procedure manual
 ├── src/
 │   ├── __init__.py
-│   ├── main.py                      # Interactive CLI demo
+│   ├── main.py                           # Interactive CLI navigator & menu
 │   ├── domain/
 │   │   ├── __init__.py
-│   │   ├── student.py               # Student entity (Observer)
-│   │   └── course.py                # Abstract Course base, CourseType & State hooks
+│   │   ├── student.py                    # Student entity (Observer)
+│   │   └── course.py                     # Abstract Course base, CourseType & State hooks
 │   ├── patterns/
 │   │   ├── __init__.py
-│   │   ├── factory.py               # Factory Method pattern
-│   │   ├── observer.py              # Observer pattern
-│   │   ├── strategy.py              # Strategy pattern
-│   │   ├── decorator.py             # Decorator pattern
-│   │   ├── command.py               # Command pattern (Undo/Redo & Audit)
-│   │   └── state.py                 # State pattern (Course lifecycle)
+│   │   ├── factory.py                    # Factory Method pattern
+│   │   ├── observer.py                   # Observer pattern
+│   │   ├── strategy.py                   # Strategy pattern
+│   │   ├── decorator.py                  # Decorator pattern
+│   │   ├── command.py                    # Command pattern (Undo/Redo & Audit)
+│   │   └── state.py                      # State pattern (Course lifecycle)
 │   └── services/
 │       ├── __init__.py
-│       └── course_manager.py        # Service layer orchestrating all patterns
+│       └── course_manager.py             # Service layer orchestrating all patterns
 └── tests/
     ├── __init__.py
-    └── test_patterns.py             # 58 unit + integration tests
+    └── test_patterns.py                  # 58 unit + integration tests
 ```
 
 ---
@@ -72,13 +110,12 @@ dp/
 
 - Python 3.10+ (uses `match`, `|` union types, modern type hints)
 
-### Run the Interactive Demo
+### Windows Console UTF-8 Setup (Recommended)
 
-```bash
+```powershell
+$env:PYTHONIOENCODING="utf-8"
 python src/main.py
 ```
-
-This walks you through all six patterns step by step with real course management scenarios.
 
 ### Run the Tests
 
@@ -86,7 +123,7 @@ This walks you through all six patterns step by step with real course management
 python -m unittest discover -s tests -v
 ```
 
-Expected output: **58 tests, all passing**.
+Expected output: **58 tests, all passing** in ~0.004s.
 
 ---
 
