@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Course Management Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">🎓</div>
+                <div>
+                    <h1 class="brand-title">CoursePortal</h1>
+                    <p class="brand-subtitle">Academic Semester 2026-2027</p>
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <button class="nav-tab active" data-tab="catalog">
+                    <span class="tab-icon">📚</span> Catalog
+                </button>
+                <button class="nav-tab" data-tab="schedule">
+                    <span class="tab-icon">🗓️</span> My Schedule 
+                    <span class="tab-badge" id="schedule-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="wishlist">
+                    <span class="tab-icon">⭐</span> Wishlist 
+                    <span class="tab-badge" id="wishlist-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="activity">
+                    <span class="tab-icon">🔔</span> Activity
+                    <span class="tab-badge" id="alert-count">0</span>
+                </button>
+            </nav>
+
+            <div class="nav-actions">
+                <button class="btn btn-primary" id="btn-open-add-modal">
+                    <span>+ Add Course</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+        
+        <!-- Global Toast Notification Area -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- TAB 1: COURSE CATALOG -->
+        <section id="tab-catalog" class="tab-content active">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Course Catalog</h2>
+                    <p class="section-subtitle">Browse available university courses, manage your academic curriculum, and enroll.</p>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="catalog-search" class="search-input" placeholder="Search by title, code, or instructor...">
+                    <select id="catalog-day-filter" class="select-input">
+                        <option value="">All Days</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Course Cards Grid -->
+            <div id="course-grid" class="course-grid">
+                <!-- Injected via JavaScript -->
+            </div>
+        </section>
+
+        <!-- TAB 2: MY SCHEDULE / TIMETABLE -->
+        <section id="tab-schedule" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">My Class Schedule</h2>
+                    <p class="section-subtitle">Weekly timetable of your enrolled courses, credit load, and tuition summary.</p>
+                </div>
+                <div class="schedule-summary-metrics">
+                    <div class="metric-card">
+                        <span class="metric-label">Enrolled Courses</span>
+                        <span class="metric-value" id="metric-courses">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Credit Hours</span>
+                        <span class="metric-value" id="metric-credits">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Total Tuition</span>
+                        <span class="metric-value highlight" id="metric-tuition">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Timetable Grid -->
+            <div class="schedule-timetable-wrapper">
+                <h3 class="subsection-title">Weekly Timetable</h3>
+                <div class="timetable-grid" id="timetable-grid">
+                    <!-- Days Monday through Friday dynamically filled -->
+                </div>
+            </div>
+
+            <!-- Detailed Enrolled Courses List -->
+            <div class="enrolled-list-wrapper">
+                <h3 class="subsection-title">Enrolled Course Details</h3>
+                <div id="enrolled-list" class="enrolled-list">
+                    <!-- Dynamic enrolled rows -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: WISHLIST -->
+        <section id="tab-wishlist" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">My Course Wishlist</h2>
+                    <p class="section-subtitle">Saved courses you are interested in enrolling in during upcoming registration rounds.</p>
+                </div>
+            </div>
+            <div id="wishlist-grid" class="course-grid">
+                <!-- Dynamic wishlist cards -->
+            </div>
+        </section>
+
+        <!-- TAB 4: ACTIVITY & NOTIFICATIONS -->
+        <section id="tab-activity" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Activity Feed & Alerts</h2>
+                    <p class="section-subtitle">Live system notifications, schedule conflict checks, and administrative updates.</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-refresh-activity">Refresh Feed</button>
+            </div>
+            <div class="activity-container">
+                <div class="activity-feed" id="activity-feed">
+                    <!-- Dynamic notification items -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL 1: ENROLLMENT CUSTOMIZATION MODAL -->
+    <div id="modal-enroll" class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="enroll-modal-title">Customize Enrollment</h3>
+                    <p class="modal-subtitle" id="enroll-modal-subtitle">Course Code & Details</p>
+                </div>
+                <button class="modal-close" id="btn-close-enroll-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-enroll">
+                    <input type="hidden" id="enroll-course-id">
+                    
+                    <!-- Enrollment Add-ons (Decorator implementation) -->
+                    <div class="form-section">
+                        <label class="section-form-label">Course Add-ons & Practicum Options</label>
+                        <p class="section-form-hint">Enrich your academic experience with hands-on lab sessions, honors tracks, or professional certifications.</p>
+                        
+                        <div class="checkbox-cards">
+                            <label class="checkbox-card">
+                                <input type="checkbox" id="enroll-add-lab">
+                                <div class="card-content">
+                                    <div class="card-title-row">
+                                        <span class="card-name">🔬 Hands-on Laboratory Practicum</span>
+                                        <span class="card-price">+$150.00</span>
+                                    </div>
+                                    <p class="card-desc">Dedicated laboratory workstation with specialized experimental equipment and 2 practical hours per week.</p>
+                                </div>
+                            </label>
+
+                            <label class="checkbox-card">
+                                <input type="checkbox" id="enroll-add-honors">
+                                <div class="card-content">
+                                    <div class="card-title-row">
+                                        <span class="card-name">🎖️ Honors Research Track</span>
+                                        <span class="card-price">+$100.00 (+1 Credit)</span>
+                                    </div>
+                                    <p class="card-desc">Advanced faculty-mentored independent research paper and 1 extra honors credit awarded.</p>
+                                </div>
+                            </label>
+
+                            <label class="checkbox-card">
+                                <input type="checkbox" id="enroll-add-cert">
+                                <div class="card-content">
+                                    <div class="card-title-row">
+                                        <span class="card-name">📜 Verified Professional Certificate</span>
+                                        <span class="card-price">+$75.00</span>
+                                    </div>
+                                    <p class="card-desc">Includes proctored certification exam voucher and cryptographically verifiable digital badge.</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tuition & Scholarship Plan (Strategy implementation) -->
+                    <div class="form-section">
+                        <label class="section-form-label">Tuition & Scholarship Plan</label>
+                        <p class="section-form-hint">Select the applicable student financial category or merit scholarship.</p>
+                        
+                        <select id="enroll-strategy-select" class="select-input full-width">
+                            <option value="standard">Standard Student Plan (No discount)</option>
+                            <option value="merit">Academic Merit Scholarship (30% reduction)</option>
+                            <option value="financial_aid">Need-Based Financial Aid (50% reduction)</option>
+                            <option value="early_bird">Early Registration Incentive (15% reduction)</option>
+                        </select>
+                        <p class="plan-description-text" id="plan-description-hint"></p>
+                    </div>
+
+                    <!-- Dynamic Cost Breakdown Card -->
+                    <div class="calculation-summary-card">
+                        <div class="calc-row">
+                            <span>Base Course Tuition:</span>
+                            <span id="calc-base-fee">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span>Selected Add-ons:</span>
+                            <span id="calc-addon-fee">+$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span>Credits:</span>
+                            <span id="calc-credits">3 Credits</span>
+                        </div>
+                        <div class="calc-row text-success">
+                            <span>Plan Discount Applied:</span>
+                            <span id="calc-discount-amount">-$0.00</span>
+                        </div>
+                        <div class="calc-row total-row">
+                            <span>Total Payable Tuition:</span>
+                            <span class="final-fee" id="calc-final-total">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-enroll">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-enroll">Confirm Enrollment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD / EDIT COURSE MODAL -->
+    <div id="modal-course-form" class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="course-form-modal-title">Create New Course</h3>
+                    <p class="modal-subtitle">Enter curriculum details to publish a course to the catalog.</p>
+                </div>
+                <button class="modal-close" id="btn-close-course-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-course-edit">
+                    <input type="hidden" id="course-form-id">
+                    
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="course-code">Course Code *</label>
+                            <input type="text" id="course-code" class="text-input" placeholder="e.g. CS305" required>
+                        </div>
+                        <div class="form-group flex-2">
+                            <label for="course-title">Course Title *</label>
+                            <input type="text" id="course-title" class="text-input" placeholder="e.g. Artificial Intelligence" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label for="course-instructor">Instructor Name *</label>
+                            <input type="text" id="course-instructor" class="text-input" placeholder="e.g. Dr. Jane Doe" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="course-credits">Credits *</label>
+                            <input type="number" id="course-credits" class="text-input" min="1" max="6" value="3" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="course-fee">Base Fee ($) *</label>
+                            <input type="number" id="course-fee" class="text-input" min="0" step="10" value="450" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="course-day">Lecture Day *</label>
+                            <select id="course-day" class="select-input full-width" required>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="course-start">Start Time *</label>
+                            <input type="time" id="course-start" class="text-input" value="09:00" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="course-end">End Time *</label>
+                            <input type="time" id="course-end" class="text-input" value="10:30" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="course-capacity">Capacity *</label>
+                            <input type="number" id="course-capacity" class="text-input" min="1" max="100" value="35" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="course-desc">Syllabus / Course Description</label>
+                        <textarea id="course-desc" class="textarea-input" rows="3" placeholder="Brief outline of course topics, prerequisites, and learning objectives..."></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-course-form">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-course-form">Save Course</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
